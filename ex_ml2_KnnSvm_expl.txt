@@ -1,0 +1,327 @@
+import pypandoc
+
+content = r"""
+MACHINE LEARNING – PRACTICAL 2
+EMAIL SPAM CLASSIFICATION USING KNN AND SVM
+QUICK PRACTICAL REVISION – NOTES FOR THE ORIGINAL CODE
+
+AIM
+Classify emails into two classes:
+0 = Normal / Not Spam
+1 = Abnormal / Spam
+
+This is SUPERVISED BINARY CLASSIFICATION because the dataset already contains the correct class label (Prediction), and the model learns from labelled examples.
+
+DATASET STRUCTURE
+- Email No. : email identifier; remove it from model inputs.
+- Word columns : word frequencies/counts in each email (already numerical).
+- Prediction : target/output; 0 = normal, 1 = spam.
+This word-count representation is commonly called Bag of Words (BoW).
+No text tokenization is needed because the dataset is already a word-count matrix.
+
+WORKFLOW
+1. Import libraries.
+2. Create a small demo CSV only if emails.csv is missing.
+3. Load and inspect the dataset.
+4. Separate features X and target y.
+5. Split into training and testing data.
+6. Train KNN and SVM.
+7. Evaluate and compare both models.
+8. Display confusion matrices and metric comparison graph.
+
+IMPORTANT FILE NOTE
+The original code uses os.getcwd() in Jupyter. Therefore emails.csv must be in Jupyter's CURRENT WORKING DIRECTORY (the folder shown by os.getcwd()), not necessarily the folder where the notebook file is saved.
+Check current folder with:
+import os
+print(os.getcwd())
+If needed, use an explicit path:
+DATASET_FILE = r"E:\ML\datasets\emails.csv"
+The demo data has only 14 artificial rows. It is only a fallback to make the script run, not the real Kaggle dataset. Use the real emails.csv for meaningful performance results.
+
+1) STEP 1 – IMPORTS
+import os
+import pandas as pd
+from sklearn.metrics import (accuracy_score, f1_score, precision_score, recall_score)
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+
+Meaning:
+- os: work with folders/files and check whether CSV exists.
+- pandas (pd): load and manipulate tabular data.
+- train_test_split: divide data into training and testing sets.
+- KNeighborsClassifier: K-Nearest Neighbors classification algorithm.
+- SVC: Support Vector Classifier (SVM).
+- accuracy_score, precision_score, recall_score, f1_score: evaluate classification.
+
+Python syntax:
+import library = import a library
+from library import function = import a specific function/class
+pd.read_csv(path) = read a CSV file
+print(...) = display output
+
+2) STEP 2 – FILE CHECK AND DEMO DATA
+if os.path.exists(DATASET_FILE):
+    print("Using dataset")
+else:
+    with open(DATASET_FILE, "w", encoding="utf-8") as file:
+        file.write(DEMO_EMAILS_CSV)
+
+Meaning:
+- os.path.exists(path) checks whether the file exists.
+- if/else selects what to do depending on the condition.
+- open(..., "w") opens/creates a file for writing.
+- file.write(...) writes the demo CSV text into the file.
+- encoding="utf-8" specifies text encoding.
+The long DEMO_EMAILS_CSV string is a tiny artificial example with the same column structure. It is not a substitute for the real dataset.
+
+Jupyter path detail:
+if "__file__" in globals():
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+else:
+    SCRIPT_DIR = os.getcwd()
+DATASET_FILE = os.path.join(SCRIPT_DIR, "emails.csv")
+
+- __file__ is usually available when running a .py script.
+- In Jupyter, __file__ is normally absent, so os.getcwd() is used.
+- os.path.join() builds a file path.
+- In Jupyter, check the current folder with os.getcwd().
+
+3) STEP 3 – LOAD DATA AND SEPARATE X/y
+data = pd.read_csv(DATASET_FILE)
+print(data.shape)
+print(data.head())
+print(data["Prediction"].value_counts())
+
+X = data.drop(columns=["Email No.", "Prediction"])
+y = data["Prediction"]
+
+Meaning:
+- read_csv() loads the dataset into a Pandas DataFrame.
+- shape gives (rows, columns).
+- head() displays the first five rows.
+- value_counts() counts how many examples belong to each class.
+- drop(columns=[...]) removes the ID and target columns from input features.
+- X contains input features (word counts).
+- y contains the correct output labels (Prediction).
+
+Why remove Email No.?
+It is only an identifier and does not describe email content.
+Why remove Prediction from X?
+It is the answer the model must learn to predict. Keeping it in X would cause target leakage.
+
+4) STEP 4 – TRAIN/TEST SPLIT
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42, stratify=y)
+
+Meaning:
+- 80% data is used for training.
+- 20% data is used for testing.
+- random_state=42 makes the split reproducible.
+- stratify=y keeps approximately the same class proportions (spam/normal) in both sets.
+Training data teaches the model; test data checks predictions on unseen records.
+
+5) STEP 5 – K-NEAREST NEIGHBORS (KNN)
+KNN is a supervised, instance-based classification algorithm.
+It finds the K closest training examples to a new email and predicts the majority class among those neighbours.
+
+Code:
+knn_prediction = evaluate("KNN", KNeighborsClassifier(n_neighbors=5))
+
+Inside evaluate():
+model.fit(X_train, y_train)
+prediction = model.predict(X_test)
+
+- KNeighborsClassifier(...) creates the KNN classifier.
+- n_neighbors=5 means examine the five nearest training examples.
+- fit(X_train, y_train) trains/stores the training examples.
+- predict(X_test) predicts class 0 or 1 for each test email.
+- evaluate() is a user-defined function that trains, predicts, prints metrics and returns predictions.
+
+EUCLIDEAN DISTANCE FORMULA
+d(x,y) = sqrt( sum from i=1 to n of (x_i - y_i)^2 )
+
+- x_i and y_i are feature values of two emails.
+- n is the number of features.
+- Smaller distance means more similar feature vectors.
+- Majority voting among the 5 nearest neighbours decides the class.
+
+6) STEP 6 – SUPPORT VECTOR MACHINE (SVM)
+SVM is a supervised classification algorithm. It finds a separating decision boundary (hyperplane) between classes while aiming to maximize the margin.
+
+Code:
+svm_prediction = evaluate("SVM", SVC(kernel="linear"))
+
+Meaning:
+- SVC() creates a Support Vector Classifier.
+- kernel="linear" selects a linear decision boundary.
+- fit() trains the classifier.
+- predict() classifies test emails.
+
+LINEAR HYPERPLANE
+w^T x + b = 0
+
+- w = weight vector.
+- x = input feature vector.
+- b = bias.
+- Support vectors are training points closest to the separating boundary.
+- Margin is the distance between the boundary and the nearest points from each class.
+
+IMPORTANT ABOUT THE ORIGINAL CODE
+The supplied original code does NOT use StandardScaler. Do not claim that it scales the features. KNN is distance-based and feature scaling can matter. A scaled Pipeline can be an improvement, but it changes the original implementation. For explaining the exact supplied code, describe what it actually does.
+
+7) STEP 7 – EVALUATION METRICS
+The evaluate() function prints four metrics.
+
+Let:
+TP = actual spam correctly predicted as spam.
+TN = actual normal correctly predicted as normal.
+FP = actual normal incorrectly predicted as spam.
+FN = actual spam incorrectly predicted as normal.
+
+ACCURACY
+(TP + TN) / (TP + TN + FP + FN)
+Overall proportion of correct predictions. Higher is generally better.
+
+PRECISION
+TP / (TP + FP)
+Out of emails predicted as spam, how many were actually spam? Higher means fewer normal emails are wrongly marked as spam.
+
+RECALL
+TP / (TP + FN)
+Out of actual spam emails, how many were detected? Higher means fewer spam emails are missed.
+
+F1-SCORE
+2 × (Precision × Recall) / (Precision + Recall)
+Harmonic mean of precision and recall. Higher is generally better, especially when classes are imbalanced.
+
+zero_division=0:
+If a metric denominator is zero, return 0 instead of producing a divide-by-zero warning.
+
+round(value, 4):
+Display a value rounded to four decimal places.
+
+8) STEP 7 – MODEL COMPARISON TABLE
+comparison = pd.DataFrame({...})
+print(comparison.round(4).to_string(index=False))
+
+Meaning:
+- pd.DataFrame() creates a table from the supplied columns and values.
+- Each metric is calculated separately for KNN predictions and SVM predictions.
+- round(4) rounds values to four decimal places.
+- to_string(index=False) prints a clean table without row index numbers.
+
+How to choose:
+- Higher accuracy is better for overall correctness.
+- Higher precision means fewer false spam alarms.
+- Higher recall means fewer spam emails are missed.
+- Higher F1 means a better balance of precision and recall.
+Do not assume SVM always wins. State which model performed better based on the actual output.
+
+9) STEP 8 – OBSERVATION
+The original code prints a general observation:
+Both models use the same word-count features. Compare accuracy, precision, recall and F1. SVM can work well with high-dimensional feature data; KNN is conceptually simple but prediction can be slower because it compares test points with training points.
+For the practical conclusion, use the measured results rather than claiming a model won without checking the scores.
+
+10) STEP 9 – PLOTS
+A) Confusion matrix for each model:
+matrix = confusion_matrix(y_test, prediction)
+- confusion_matrix() counts correct and incorrect predictions for each class.
+- Rows represent actual classes; columns represent predicted classes.
+- With labels [0,1], layout is:
+  [[TN, FP],
+   [FN, TP]]
+
+The original code uses:
+fig, axis = plt.subplots(figsize=(6, 5))
+image = axis.imshow(matrix, cmap="Blues")
+axis.text(...)       # write each count inside its cell
+axis.set_title(...)  # graph title
+axis.set_xlabel(...) # horizontal axis label
+axis.set_ylabel(...) # vertical axis label
+axis.set_xticks([0, 1])
+axis.set_yticks([0, 1])
+fig.colorbar(image, ax=axis)
+fig.tight_layout()
+plt.show()
+
+B) Metric comparison bar graph:
+metrics = ["Accuracy", "Precision", "Recall", "F1"]
+axis.bar(...)       # draw bars
+axis.set_xticks(...)
+axis.set_xticklabels(...)
+axis.set_ylim(0, 1.1) # set vertical axis range
+axis.set_ylabel(...)
+axis.set_title(...)
+axis.grid(...)
+axis.legend()
+plt.show()
+
+Plot concepts:
+- plt.subplots() creates a figure and axes.
+- imshow() displays a matrix as an image/heatmap.
+- bar() creates a bar chart.
+- set_title()/set_xlabel()/set_ylabel() add labels.
+- plt.show() displays the graph.
+
+VIVA – QUICK QUESTIONS
+Q1. What is classification?
+A. A supervised ML task that predicts a category or class.
+
+Q2. What is binary classification?
+A. Classification with two possible classes. Here, 0 = normal and 1 = spam.
+
+Q3. What is KNN?
+A. It classifies a new sample using the majority class among its K nearest training samples.
+
+Q4. What is K in this code?
+A. K = 5, specified by n_neighbors=5.
+
+Q5. What is SVM?
+A. A supervised algorithm that finds a separating hyperplane between classes.
+
+Q6. What is a support vector?
+A. A training point closest to the separating hyperplane.
+
+Q7. What is a kernel?
+A. A function that helps SVM form a decision boundary. This code uses a linear kernel.
+
+Q8. What is a feature?
+A. An input variable used by the model. Here, features are word counts.
+
+Q9. What is the target?
+A. The value to predict. Here, Prediction.
+
+Q10. Why remove Email No.?
+A. It is an identifier, not meaningful email-content information.
+
+Q11. Why split the dataset?
+A. To train on one part and evaluate on unseen data.
+
+Q12. What is a false positive?
+A. A normal email incorrectly labelled as spam.
+
+Q13. What is a false negative?
+A. A spam email incorrectly labelled as normal.
+
+Q14. What does stratify=y do?
+A. It preserves approximately the same class proportions in training and test sets.
+
+Q15. Which model is better?
+A. Compare actual accuracy, precision, recall and F1 values. Do not decide without checking the output.
+
+ONE-MINUTE PRACTICAL EXPLANATION
+"In this practical, we perform binary classification of emails into normal and spam using KNN and SVM. The dataset contains word-frequency columns and a Prediction column, where 0 represents normal and 1 represents spam. We load the CSV using Pandas, remove the email ID from the input features, and separate X and y. We split the data into 80% training and 20% testing using stratified sampling. We train KNN with five neighbours and SVM with a linear kernel. Finally, we compare both models using accuracy, precision, recall, F1-score and confusion matrices."
+
+EXECUTION CHECKLIST
+- Make sure emails.csv exists in the current working folder, or set DATASET_FILE to its full path.
+- Use the real Kaggle dataset for meaningful results.
+- Check that the target column is exactly named Prediction.
+- Check that Email No. exists before dropping it.
+- Run notebook cells in order from top to bottom.
+- If a variable is not defined, run the earlier cell that creates it.
+- The original code does not scale features; do not describe StandardScaler as part of this exact implementation.
+"""
+output_path = "/mnt/data/ML_Practical_2_Email_Spam_Exact_Code_Revision.txt"
+pypandoc.convert_text(content, "plain", format="md", outputfile=output_path, extra_args=["--standalone"])
+print(output_path)

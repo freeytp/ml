@@ -1,0 +1,115 @@
+from pathlib import Path
+
+content = """PRACTICAL 5 – GRADIENT DESCENT (QUICK REVISION)
+
+AIM
+Implement Gradient Descent to minimize y = (x + 3)^2, starting from x = 2.
+
+1. KEY CONCEPT
+Gradient Descent is an optimization algorithm. It repeatedly updates x in the direction opposite to the derivative to reduce the function value.
+
+Objective function:
+    f(x) = (x + 3)^2
+
+Derivative:
+    f'(x) = 2(x + 3)
+
+Minimum:
+    x = -3, and f(x) = 0
+
+2. UPDATE FORMULA
+    x_new = x_old - learning_rate * gradient
+
+The learning rate controls the size of each update. The gradient gives the slope.
+
+3. CODE WORKFLOW
+- Define f(x) to calculate the function value.
+- Define derivative(x) to calculate 2(x + 3).
+- Set x_start = 2, learning_rate = 0.1, iterations = 100.
+- In each iteration:
+  1. Calculate gradient = derivative(x).
+  2. Update x = x - learning_rate * gradient.
+  3. Store (x, f(x)) in path.
+  4. Print progress at the selected interval.
+- Return the final x and the stored path.
+- Run the algorithm and compare different learning rates.
+
+4. FIRST ITERATIONS (LEARNING RATE = 0.1)
+Starting x = 2
+Gradient = 2(2 + 3) = 10
+New x = 2 - 0.1(10) = 1
+
+Next:
+x = 1 - 0.1(8) = 0.2
+Then:
+x = 0.2 - 0.1(6.4) = -0.44
+
+The values gradually move towards -3.
+
+5. LEARNING RATE EFFECT
+- 0.01: very slow convergence.
+- 0.1: smooth, steady convergence.
+- 0.5: reaches the minimum quickly.
+- 0.9: converges while oscillating around the minimum.
+- 1.0: keeps bouncing and does not settle.
+
+6. PLOTS
+- Function plot: shows the parabola and the points followed during descent.
+- Convergence plot: shows how the function value decreases over iterations for different learning rates.
+- A logarithmic y-axis helps display very small function values.
+
+7. IMPORTANT PYTHON SYNTAX
+- def: defines a function.
+- ** 2: raises a value to the power of 2.
+- range(iterations): repeats the loop.
+- append(): adds an item to a list.
+- i % verbose_every == 0: checks whether i is divisible by the print interval.
+- return x, path: returns two values.
+- round(value, 6): rounds a value to 6 decimal places.
+
+8. VIVA QUESTIONS
+Q1. What is Gradient Descent?
+An optimization algorithm that minimizes a function by updating parameters opposite to the gradient.
+
+Q2. What is a gradient?
+The derivative that indicates the slope and direction of increase.
+
+Q3. Why subtract the derivative?
+Moving opposite to the gradient reduces the function value.
+
+Q4. What is the learning rate?
+It controls the size of each update.
+
+Q5. What happens if the learning rate is too small?
+Convergence becomes very slow.
+
+Q6. What happens if it is too large?
+The algorithm may oscillate or diverge.
+
+Q7. What is the minimum in this practical?
+x = -3 and y = 0.
+
+Q8. Why store path?
+To track and plot the values visited during optimization.
+
+Q9. Is a dataset required?
+No. This practical minimizes a mathematical function.
+
+Q10. What is the role of the derivative?
+It tells the algorithm the slope at the current x.
+
+9. ONE-MINUTE PRACTICAL EXPLANATION
+In this practical, I implemented Gradient Descent to minimize the function y = (x + 3)^2. I calculated its derivative as 2(x + 3) and repeatedly updated x using x_new = x_old - learning_rate * gradient. Starting from x = 2, the value moves towards -3, where the function reaches its minimum value of 0. I also compared different learning rates and plotted the descent path and convergence curves.
+
+LAST-MINUTE REVISION
+- Function: (x + 3)^2
+- Derivative: 2(x + 3)
+- Starting point: x = 2
+- Update: x = x - learning_rate * gradient
+- Minimum: x = -3, y = 0
+- Smaller learning rate = slower updates.
+- Larger learning rate = faster updates, but may oscillate.
+"""
+out = Path("/mnt/data/ML_Practical_5_Gradient_Descent_Quick_Revision.txt")
+out.write_text(content, encoding="utf-8")
+print(f"Created: {out}")

@@ -1,0 +1,448 @@
+from pathlib import Path
+import pypandoc
+
+content = """MACHINE LEARNING PRACTICAL 3
+BANK CUSTOMER CHURN PREDICTION USING AN ARTIFICIAL NEURAL NETWORK
+COMPLETE QUICK REVISION + CODE EXPLANATION NOTES
+
+1. AIM
+Build a neural-network-based binary classifier to predict whether a bank customer leaves the bank.
+Dataset: Churn_Modelling.csv
+Target: Exited (0 = stayed, 1 = exited)
+This is supervised learning and binary classification. The code predicts the Exited label in the dataset; it does not establish a six-month forecast horizon unless the dataset labels define that period.
+
+2. COMPLETE WORKFLOW
+1) Import libraries.
+2) Locate and load Churn_Modelling.csv.
+3) Drop unnecessary identifier columns.
+4) One-hot encode Geography and Gender.
+5) Separate input features X and target y.
+6) Split into 80% training and 20% testing data.
+7) Scale features with StandardScaler.
+8) Build and train baseline ANN.
+9) Build and train improved ANN with Dropout.
+10) Use EarlyStopping.
+11) Predict test labels.
+12) Evaluate with accuracy and confusion matrix.
+13) Plot accuracy, loss and confusion matrices.
+
+Flow:
+CSV -> Cleaning -> Encoding -> X/y -> Train/Test Split -> Scaling
+-> Baseline ANN -> Improved ANN -> Prediction -> Evaluation -> Graphs
+
+3. LIBRARIES
+import os
+    File paths, folder operations and checking whether a file exists.
+import pandas as pd
+    Load and manipulate tabular data.
+train_test_split
+    Split data into training and testing sets.
+StandardScaler
+    Standardize feature values.
+accuracy_score, confusion_matrix
+    Evaluate classification predictions.
+TensorFlow
+    Deep-learning framework used to build and train the ANN.
+Sequential
+    Stacks neural-network layers in order.
+Input
+    Specifies the input feature shape.
+Dense
+    Fully connected neural-network layer.
+Dropout
+    Randomly disables a fraction of layer outputs during training.
+EarlyStopping
+    Stops training when the monitored validation metric stops improving.
+
+4. DATASET PATH AND LOADING
+The supplied code uses:
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
+DATASET_FILE = os.path.join(SCRIPT_DIR, "Churn_Modelling.csv")
+
+__file__ is normally available in a Python script. In Jupyter it is usually unavailable, so os.getcwd() supplies the current working directory. os.path.join() combines the folder and filename.
+
+If the file is missing, the supplied code creates a 16-row demo CSV. This is only a fallback to test execution; it is too small for meaningful model training. Use the complete Kaggle dataset for the practical.
+
+For the user's folder setup, if needed:
+DATASET_FILE = r"E:\\ML\\datasets\\Churn_Modelling.csv"
+
+The r makes this a raw string, so Windows backslashes are handled correctly.
+
+data = pd.read_csv(DATASET_FILE)
+head() shows the first five rows. shape gives rows and columns. info() displays column names, data types and non-null counts.
+
+5. DATA PREPROCESSING
+A. Drop unnecessary columns:
+data = data.drop(columns=["RowNumber", "CustomerId", "Surname"])
+
+These are identifiers/name fields rather than useful customer measurements for this model.
+
+B. One-hot encoding:
+data = pd.get_dummies(data, columns=["Geography", "Gender"], drop_first=True)
+
+Machine-learning models need numerical input. get_dummies() converts categories into 0/1 indicator columns. drop_first=True omits one reference category and avoids redundant dummy columns.
+
+C. Features and target:
+X = data.drop(columns=["Exited"])
+y = data["Exited"]
+
+X contains input features. y contains the correct output label. Exited=0 means stayed; Exited=1 means exited.
+
+D. Train-test split:
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+test_size=0.2 means 20% testing and 80% training.
+random_state=42 makes the split reproducible.
+stratify=y preserves approximately the same proportion of each class in both sets.
+
+E. Feature scaling:
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+Formula: z = (x - mean) / standard_deviation
+
+fit_transform() learns mean and standard deviation from training data and transforms it. transform() applies those training statistics to test data. Do not fit the scaler on test data because that leaks test-set information into preprocessing.
+
+Small technical note about the exact code: it scales all of X_train before Keras takes validation_split=0.2 inside model.fit(). Therefore the later validation subset has contributed to the scaler statistics. For a stricter experiment, split validation data before fitting the scaler, fit only on the fitting subset, and transform validation/test data using that scaler. This is a minor validation-preprocessing leakage in the supplied workflow.
+
+6. WHAT IS AN ARTIFICIAL NEURAL NETWORK?
+An ANN is a machine-learning model made of connected artificial neurons. It has:
+- Input layer: receives features.
+- Hidden layer(s): learn patterns.
+- Output layer: produces the prediction.
+
+A neuron calculates:
+z = w1*x1 + w2*x2 + ... + wn*xn + b
+output = activation(z)
+
+x = input, w = learned weight, b = bias.
+During training, weights and biases are adjusted to reduce prediction error.
+
+7. BASELINE MODEL
+Exact architecture:
+initial_model = Sequential([
+    Input(shape=(X_train.shape[1],)),
+    Dense(64, activation="relu"),
+    Dense(32, activation="relu"),
+    Dense(1, activation="sigmoid")
+])
+
+Input(shape=(X_train.shape[1],))
+    Number of input values equals the number of feature columns. shape[1] means number of columns; the comma makes a one-element tuple.
+
+Dense(64, activation="relu")
+    First fully connected hidden layer with 64 neurons.
+
+Dense(32, activation="relu")
+    Second hidden layer with 32 neurons.
+
+Dense(1, activation="sigmoid")
+    One output neuron. Sigmoid produces a value between 0 and 1, treated as the probability of class 1 (customer exits).
+
+ReLU formula: ReLU(x) = max(0, x)
+It returns zero for negative input and the input itself for positive input.
+
+Sigmoid formula: sigmoid(x) = 1 / (1 + e^(-x))
+It maps values into the range 0 to 1.
+
+One output neuron is used because this is binary classification.
+
+8. COMPILE THE MODEL
+initial_model.compile(
+    optimizer="adam",
+    loss="binary_crossentropy",
+    metrics=["accuracy"]
+)
+
+Adam: optimizer that updates weights to reduce loss.
+Binary cross-entropy: loss function for binary classification.
+Formula:
+Loss = -[y*log(p) + (1-y)*log(1-p)]
+y = actual class (0/1); p = predicted probability for class 1.
+accuracy: reports the fraction of correct predictions.
+
+initial_model.summary() displays each layer, output shape and trainable parameter count.
+
+9. TRAIN BASELINE MODEL
+initial_history = initial_model.fit(
+    X_train, y_train,
+    epochs=50,
+    batch_size=32,
+    validation_split=0.2,
+    verbose=1
+)
+
+fit() trains the model.
+epochs=50: up to 50 complete passes through the training data.
+batch_size=32: processes 32 examples before a weight update (except possibly the last smaller batch).
+validation_split=0.2: Keras holds out 20% of the supplied training data for validation; it is not the final test set.
+verbose=1: displays training progress.
+initial_history stores accuracy/loss values for later plotting.
+
+10. IMPROVED MODEL WITH DROPOUT
+Exact architecture:
+model = Sequential([
+    Input(shape=(X_train.shape[1],)),
+    Dense(64, activation="relu"),
+    Dropout(0.3),
+    Dense(32, activation="relu"),
+    Dropout(0.2),
+    Dense(16, activation="relu"),
+    Dense(1, activation="sigmoid")
+])
+
+Architecture:
+Input -> Dense(64) -> Dropout(0.3) -> Dense(32)
+-> Dropout(0.2) -> Dense(16) -> Dense(1)
+
+Compared with baseline, it adds a 16-neuron hidden layer and two Dropout layers.
+
+Dropout randomly sets a fraction of layer outputs to zero during training. This discourages over-reliance on particular neurons and can reduce overfitting.
+Dropout(0.3) means 30%; Dropout(0.2) means 20%.
+Dropout is disabled during normal prediction.
+
+Compile with the same optimizer, loss and metric:
+model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+
+The word improved describes the alternative design being tested. It does not guarantee better test accuracy. Compare actual results.
+
+11. EARLY STOPPING
+early_stop = EarlyStopping(
+    monitor="val_loss",
+    patience=5,
+    restore_best_weights=True
+)
+
+monitor="val_loss": monitor validation loss.
+patience=5: stop if validation loss does not improve for five consecutive epochs.
+restore_best_weights=True: restore weights from the epoch with the best validation loss.
+
+Train:
+history = model.fit(
+    X_train, y_train,
+    epochs=50,
+    batch_size=32,
+    validation_split=0.2,
+    callbacks=[early_stop],
+    verbose=1
+)
+
+The model can stop before 50 epochs if validation loss does not improve.
+
+12. PREDICTION
+The supplied code uses:
+y_pred_initial = (initial_model.predict(X_test) > 0.5).astype(int).ravel()
+y_pred = (model.predict(X_test) > 0.5).astype(int).ravel()
+
+model.predict(X_test) returns probabilities.
+> 0.5 applies the threshold:
+    probability > 0.5 -> class 1 (exited)
+    probability <= 0.5 -> class 0 (stayed)
+.astype(int) converts True/False to 1/0.
+.ravel() flattens the result into a one-dimensional array.
+
+13. EVALUATION
+The original code uses accuracy and confusion matrix.
+
+Accuracy = (TP + TN) / (TP + TN + FP + FN)
+
+TP = predicted exited and actually exited.
+TN = predicted stayed and actually stayed.
+FP = predicted exited but actually stayed.
+FN = predicted stayed but actually exited.
+
+Confusion matrix (class order [0,1]):
+                 Predicted
+                 0       1
+Actual 0         TN      FP
+Actual 1         FN      TP
+
+In scikit-learn:
+[[TN, FP],
+ [FN, TP]]
+
+The evaluate() function receives a model name and predictions, calculates accuracy_score(y_test, prediction), calculates confusion_matrix(y_test, prediction), and prints the results.
+
+IMPORTANT: The original code does not calculate precision, recall or F1-score. These may be added as optional metrics, but do not say they are already included.
+
+Accuracy can be misleading when classes are imbalanced. The confusion matrix reveals the types of mistakes.
+
+14. GRAPHS
+Training/validation accuracy:
+- initial_history.history["accuracy"]
+- initial_history.history["val_accuracy"]
+- history.history["accuracy"]
+- history.history["val_accuracy"]
+
+Training accuracy is measured on data used to update weights. Validation accuracy is measured on the validation subset.
+
+Training/validation loss:
+- initial_history.history["loss"]
+- initial_history.history["val_loss"]
+- history.history["loss"]
+- history.history["val_loss"]
+
+Lower loss is generally better. A possible overfitting sign is training loss decreasing while validation loss starts increasing.
+
+Confusion matrix heatmaps use seaborn to display the matrices clearly.
+
+15. IMPORTANT PYTHON/KERAS SYNTAX
+data.drop(columns=[...])       removes DataFrame columns.
+pd.get_dummies(...)            converts categories to indicator columns.
+X.shape[1]                     returns number of feature columns.
+Sequential([...])              stacks layers in order.
+Dense(n, activation="relu")    creates a fully connected layer.
+Input(shape=(n,))              specifies input feature count.
+Dropout(0.3)                   adds 30% dropout.
+model.compile(...)             configures training.
+model.fit(...)                 trains the model.
+model.predict(...)             generates predictions.
+.astype(int)                   converts values to integers.
+.ravel()                       flattens an array.
+history.history                stores metrics recorded during training.
+
+16. BASELINE VS IMPROVED
+Baseline:
+Input -> 64 ReLU -> 32 ReLU -> 1 Sigmoid
+
+Improved:
+Input -> 64 ReLU -> Dropout 0.3 -> 32 ReLU
+-> Dropout 0.2 -> 16 ReLU -> 1 Sigmoid
+
+Both use Adam, binary cross-entropy and accuracy. Both are evaluated on the same test set. The improved design adds a hidden layer, Dropout and EarlyStopping. It is not guaranteed to have higher test accuracy.
+
+17. COMMON ERRORS / EXECUTION CHECKLIST
+TensorFlow missing:
+    %pip install tensorflow
+Run this in the active Jupyter kernel, then restart the kernel and retry imports. Confirm the notebook uses the environment where TensorFlow was installed.
+
+CSV not found:
+    import os
+    print(os.getcwd())
+Place Churn_Modelling.csv in the current directory or set:
+    DATASET_FILE = r"E:\\ML\\datasets\\Churn_Modelling.csv"
+
+If the 16-row demo CSV was created, replace it with the full Kaggle dataset for meaningful results.
+
+Checklist:
+[ ] Correct CSV path.
+[ ] Full dataset loaded.
+[ ] TensorFlow imports successfully.
+[ ] Notebook uses the correct environment.
+[ ] Run all cells from top to bottom.
+[ ] Both models train.
+[ ] Record actual accuracy and confusion matrices.
+[ ] All graphs display.
+
+18. VIVA QUESTIONS AND ANSWERS
+Q1. What is churn?
+A customer stopping use of a company's service. Here, a customer leaving the bank.
+
+Q2. What type of ML problem is this?
+Supervised binary classification.
+
+Q3. Why supervised?
+The dataset contains known labels in the Exited column.
+
+Q4. What does Exited=1 mean?
+The customer left the bank.
+
+Q5. What is an ANN?
+A model of connected artificial neurons that learns patterns through layers.
+
+Q6. What is a neuron?
+A unit that calculates a weighted sum plus bias and applies an activation function.
+
+Q7. What is a Dense layer?
+A fully connected layer; each neuron receives outputs from all neurons in the previous layer.
+
+Q8. Why ReLU?
+It adds non-linearity and is commonly used in hidden layers.
+
+Q9. Why sigmoid at output?
+It produces a value between 0 and 1 for binary classification.
+
+Q10. Why one output neuron?
+There are two classes, 0 and 1.
+
+Q11. What is one-hot encoding?
+Converts categories into separate 0/1 indicator columns.
+
+Q12. Why StandardScaler?
+To standardize feature scales so large-valued features do not dominate due only to their units/ranges.
+
+Q13. What is overfitting?
+When a model learns training data too closely and generalizes poorly to unseen data.
+
+Q14. What is Dropout?
+A regularization method that randomly disables some outputs during training to help reduce overfitting.
+
+Q15. What is EarlyStopping?
+A callback that stops training when a monitored metric does not improve for a set patience period.
+
+Q16. What is an epoch?
+One complete pass through the training data.
+
+Q17. What is batch size?
+Number of examples processed before a weight update.
+
+Q18. What is binary cross-entropy?
+A loss function measuring prediction error in binary classification.
+
+Q19. What is Adam?
+An optimizer that updates neural-network weights to minimize loss.
+
+Q20. What is a confusion matrix?
+A table showing TP, TN, FP and FN.
+
+Q21. Why train_test_split?
+To keep data separate for training and final testing.
+
+Q22. Why stratify=y?
+To preserve class proportions in both sets.
+
+Q23. Why random_state=42?
+To make the split reproducible.
+
+Q24. Why validation_split?
+To monitor performance on data not used for weight updates.
+
+Q25. Does the improved model always perform better?
+No. Compare its actual test results.
+
+19. ONE-MINUTE PRACTICAL EXPLANATION
+"In this practical, we predict whether a bank customer will leave the bank using an Artificial Neural Network. First, we load the Churn_Modelling dataset and remove unnecessary identification columns. We convert Geography and Gender into numerical form using one-hot encoding. Then we separate the features and target column Exited, and split the data into 80 percent training and 20 percent testing data.
+
+Next, we standardize the features using StandardScaler. We build a baseline neural network with two hidden layers containing 64 and 32 neurons, using ReLU activation. The output layer has one neuron with sigmoid activation because this is binary classification.
+
+Then we build an alternative model with an additional hidden layer and Dropout layers to help reduce overfitting. We also use EarlyStopping to stop training when validation loss does not improve for five epochs. Both models use Adam optimizer and binary cross-entropy loss.
+
+Finally, we predict customer churn on the test data and compare the models using accuracy and confusion matrices. We also plot training and validation accuracy and loss to understand model learning and possible overfitting."
+
+20. LAST-MINUTE REVISION
+Aim: Bank customer churn prediction.
+ML type: Supervised learning, binary classification.
+Target: Exited (0=stayed, 1=exited).
+Encoding: pd.get_dummies() for Geography and Gender.
+Split: 80/20, random_state=42, stratify=y.
+Scaling: StandardScaler; z=(x-mean)/standard deviation.
+Baseline: Input -> 64 ReLU -> 32 ReLU -> 1 Sigmoid.
+Improved: Input -> 64 ReLU -> Dropout 0.3 -> 32 ReLU -> Dropout 0.2 -> 16 ReLU -> 1 Sigmoid.
+Optimizer: Adam.
+Loss: Binary cross-entropy.
+Training: epochs=50, batch_size=32, validation_split=0.2.
+EarlyStopping: monitor=val_loss, patience=5, restore_best_weights=True.
+Prediction: >0.5 gives class 1; otherwise class 0.
+Original evaluation: accuracy and confusion matrix.
+Plots: training/validation accuracy, training/validation loss, confusion matrix heatmaps.
+Dropout: helps reduce overfitting.
+EarlyStopping: stops training when validation loss stops improving.
+Remember: use actual run results; the improved model is not guaranteed to win; original code does not calculate precision, recall or F1.
+"""
+
+out = Path("/mnt/data/ML_Practical_3_Bank_Churn_ANN_Complete_Revision.txt")
+pypandoc.convert_text(content, "plain", format="md", outputfile=str(out), extra_args=["--standalone"])
+print(f"Created and verified: {out} ({out.stat().st_size} bytes)")

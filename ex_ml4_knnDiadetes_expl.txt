@@ -1,0 +1,235 @@
+from pathlib import Path
+import pypandoc
+
+content = """MACHINE LEARNING PRACTICAL 4 – QUICK REVISION
+DIABETES PREDICTION USING K-NEAREST NEIGHBORS (KNN)
+
+1. AIM
+Implement KNN on diabetes.csv and calculate:
+- Confusion matrix
+- Accuracy
+- Error rate
+- Precision
+- Recall
+
+Target: Outcome
+0 = Non-diabetic; 1 = Diabetic
+Type: Supervised learning – Binary classification.
+
+2. WORKFLOW
+1) Import libraries.
+2) Load diabetes.csv (create demo CSV only if missing).
+3) Separate features X and target y.
+4) Split into 80% training and 20% testing.
+5) Replace zero measurements with training medians.
+6) Standardize features using StandardScaler.
+7) Train KNN with K=5.
+8) Predict test labels.
+9) Calculate evaluation metrics.
+10) Display three plots.
+
+3. IMPORTANT CODE EXPLANATION
+
+Dataset:
+data = pd.read_csv(DATASET_FILE)
+X = data.drop(columns=["Outcome"])
+y = data["Outcome"]
+
+pd.read_csv() loads the CSV.
+X contains input features; y contains the target.
+
+Split:
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42, stratify=y)
+
+test_size=0.20: 20% testing, 80% training.
+random_state=42: reproducible split.
+stratify=y: preserves class proportions.
+
+Zero replacement:
+for column in ["Glucose", "BloodPressure", "SkinThickness",
+               "Insulin", "BMI"]:
+    median = X_train.loc[X_train[column] > 0, column].median()
+    X_train[column] = X_train[column].replace(0, median)
+    X_test[column] = X_test[column].replace(0, median)
+
+Zero values in these five measurements are treated as invalid/missing
+in this practical. The median is calculated from training data only
+and then used for both training and testing data. Median is less
+affected by extreme values than mean.
+
+Scaling:
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+StandardScaler makes features comparable because KNN uses distances.
+Formula: z = (x - mean) / standard deviation.
+fit_transform learns statistics from training data; transform applies
+those statistics to test data.
+
+4. KNN ALGORITHM
+K-Nearest Neighbors predicts a class by finding the K closest
+training records and using majority voting.
+
+Your code:
+knn = KNeighborsClassifier(n_neighbors=5)
+knn.fit(X_train, y_train)
+y_pred = knn.predict(X_test)
+
+K=5 means five nearest patients are considered.
+fit() stores training examples and labels.
+predict() predicts the test classes.
+
+Euclidean distance:
+d(P,Q) = sqrt(sum((Pi - Qi)^2))
+
+Example: If the five neighbors have labels 1,1,0,1,0, the majority
+is 1, so the predicted class is diabetic.
+
+5. CONFUSION MATRIX AND METRICS
+
+cm = confusion_matrix(y_test, y_pred)
+accuracy = accuracy_score(y_test, y_pred)
+error_rate = 1 - accuracy
+precision = precision_score(y_test, y_pred, zero_division=0)
+recall = recall_score(y_test, y_pred, zero_division=0)
+
+Confusion matrix:
+                 Predicted 0    Predicted 1
+Actual 0              TN             FP
+Actual 1              FN             TP
+
+TN: non-diabetic correctly predicted.
+TP: diabetic correctly predicted.
+FP: non-diabetic incorrectly predicted as diabetic.
+FN: diabetic incorrectly predicted as non-diabetic.
+
+Accuracy = (TP + TN) / (TP + TN + FP + FN)
+Error rate = 1 - Accuracy
+Precision = TP / (TP + FP)
+Recall = TP / (TP + FN)
+
+Accuracy = overall correctness.
+Error rate = proportion of wrong predictions.
+Precision = how many predicted diabetic cases are truly diabetic.
+Recall = how many actual diabetic cases are found.
+
+zero_division=0 returns zero if a metric is undefined due to
+division by zero.
+
+6. THREE PLOTS
+1) Confusion matrix heatmap: visualizes TN, FP, FN and TP.
+2) Metrics bar chart: compares accuracy, error rate, precision,
+   and recall.
+3) Accuracy vs K: tests K values from 1 to 10 and plots their
+   test accuracy.
+
+Important limitation: The supplied code uses test accuracy to choose
+best_k. For rigorous evaluation, choose K using validation data or
+cross-validation and evaluate once on an untouched test set.
+
+7. IMPORTANT PYTHON SYNTAX
+pd.read_csv()             Loads CSV.
+data.head()               Displays first five rows.
+data.shape                Gives rows and columns.
+data.drop()               Removes columns.
+train_test_split()        Splits dataset.
+.loc[]                    Selects rows/columns.
+.median()                 Calculates median.
+.replace()                Replaces values.
+fit_transform()           Learns scaler and transforms data.
+transform()               Applies learned scaler.
+KNeighborsClassifier()    Creates KNN.
+.fit()                    Fits/stores training data.
+.predict()                Predicts classes.
+confusion_matrix()        Calculates confusion matrix.
+accuracy_score()          Calculates accuracy.
+precision_score()         Calculates precision.
+recall_score()            Calculates recall.
+plt.show()                Displays graph.
+
+8. VIVA QUESTIONS
+Q1. What is KNN?
+A supervised algorithm that predicts using the nearest training
+examples.
+
+Q2. What does K mean?
+Number of nearest neighbors considered.
+
+Q3. What is K in your code?
+5.
+
+Q4. Why is KNN called lazy learning?
+It stores training data and performs distance calculations at
+prediction time.
+
+Q5. Why use StandardScaler?
+KNN uses distances, so features must have comparable scales.
+
+Q6. Why replace zero values?
+The specified zero measurements are treated as missing/invalid.
+
+Q7. Why use median?
+It is less affected by outliers than mean.
+
+Q8. What is majority voting?
+The most frequent class among the nearest neighbors is selected.
+
+Q9. What is precision?
+TP divided by TP + FP.
+
+Q10. What is recall?
+TP divided by TP + FN.
+
+Q11. Why stratify=y?
+To preserve class proportions in train and test sets.
+
+Q12. What happens if K is too small?
+The model may overfit and be sensitive to noise.
+
+Q13. What happens if K is too large?
+The model may underfit.
+
+Q14. What is Euclidean distance?
+Straight-line distance between points in feature space.
+
+Q15. Is this a medical diagnostic tool?
+No. It is an educational machine-learning practical.
+
+9. ONE-MINUTE EXPLANATION
+"In this practical, we use K-Nearest Neighbors to predict diabetes
+from the diabetes dataset. We load the data, separate the features
+and Outcome target, and split it into 80 percent training and
+20 percent testing data. We replace zero values in selected
+measurements with the training median and standardize the features
+using StandardScaler because KNN is distance-based. We create a
+KNN classifier with K equal to 5. It predicts each test patient's
+class using the majority label among the five nearest training
+patients. Finally, we evaluate the model using a confusion matrix,
+accuracy, error rate, precision and recall, and display graphs."
+
+10. LAST-MINUTE REVISION
+Aim: Diabetes classification.
+Algorithm: KNN.
+Target: Outcome (0=non-diabetic, 1=diabetic).
+Split: 80/20; random_state=42; stratify=y.
+Zero handling: training median for Glucose, BloodPressure,
+SkinThickness, Insulin and BMI.
+Scaling: StandardScaler.
+K: 5.
+Distance: Euclidean (default Minkowski p=2).
+Voting: Majority voting.
+Metrics: Confusion matrix, accuracy, error rate, precision, recall.
+Plots: Confusion matrix, metric bar chart, accuracy vs K.
+
+Dataset note:
+The code creates a 16-row demo CSV if the real file is missing.
+Use the full Kaggle dataset for meaningful results. Some versions
+name the pedigree feature DiabetesPedigreeFunction instead of
+Pedigree; the code does not refer to that feature by name.
+"""
+
+out = Path("/mnt/data/ML_Practical_4_Diabetes_KNN_Quick_Revision.txt")
+pypandoc.convert_text(content, "plain", format="md", outputfile=str(out), extra_args=["--standalone"])
+print(f"Created and verified: {out} ({out.stat().st_size} bytes)")

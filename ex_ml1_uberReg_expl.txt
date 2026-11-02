@@ -1,0 +1,246 @@
+import pypandoc
+
+content = r"""
+MACHINE LEARNING PRACTICAL 1 – UBER FARE PREDICTION
+Quick revision sheet for Jupyter Notebook
+
+AIM
+Predict Uber fare_amount using pickup/drop-off details. This is a REGRESSION problem because the output is a continuous number (fare).
+
+WORKFLOW
+1. Import libraries
+2. Read CSV dataset
+3. Preprocess data
+4. Calculate trip distance
+5. Detect/remove outliers
+6. Check correlation
+7. Split into train and test sets
+8. Train Linear Regression and Random Forest
+9. Evaluate and compare models
+
+1) IMPORTANT LIBRARIES / SYNTAX
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+
+df = pd.read_csv(r"E:\ML\datasets\uber.csv")  # read CSV
+df.head()       # first 5 rows
+df.shape        # (number of rows, number of columns)
+df.info()       # column names, data types, missing values
+df.isnull().sum()  # missing values in each column
+
+Remember:
+- pd = Pandas (tables/dataframes)
+- np = NumPy (mathematics)
+- plt = Matplotlib (graphs)
+- df = commonly used variable name for a DataFrame
+- r"..." = raw Windows path string; avoids backslash escape issues
+
+2) PREPROCESSING
+df = df.drop(columns=["Unnamed: 0", "key"], errors="ignore")
+df = df.drop_duplicates()
+df = df.dropna()
+
+Meaning:
+- drop(): remove unwanted columns
+- drop_duplicates(): remove repeated rows
+- dropna(): remove rows containing missing values
+- errors="ignore": do not fail if a named column is absent
+
+Convert pickup time and extract useful features:
+pickup = pd.to_datetime(df["pickup_datetime"])
+df["hour"] = pickup.dt.hour
+df["day_of_week"] = pickup.dt.dayofweek
+df["month"] = pickup.dt.month
+
+Filter invalid values:
+df = df[df["fare_amount"] > 0]
+df = df[df["passenger_count"] > 0]
+
+Syntax to remember:
+df["new_column"] = ...       # create a column
+df[df["column"] > value]     # keep rows satisfying condition
+pd.to_datetime(...)          # convert text to date/time
+
+3) DISTANCE – HAVERSINE FORMULA
+Pickup and drop-off are given as latitude/longitude. Haversine calculates the approximate great-circle distance on Earth.
+
+Formula:
+a = sin²(Δlat/2) + cos(lat1) cos(lat2) sin²(Δlon/2)
+distance = 2 R asin(√a)
+
+R = 6371 km (Earth's approximate radius).
+Latitude/longitude must be converted from degrees to radians before using trigonometric functions.
+
+Typical implementation:
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371
+    lat1, lat2 = np.radians(lat1), np.radians(lat2)
+    dlat = lat2 - lat1
+    dlon = np.radians(lon2 - lon1)
+    a = np.sin(dlat/2)**2 + np.cos(lat1)*np.cos(lat2)*np.sin(dlon/2)**2
+    return 2 * R * np.arcsin(np.sqrt(a))
+
+df["distance_km"] = haversine(
+    df["pickup_latitude"], df["pickup_longitude"],
+    df["dropoff_latitude"], df["dropoff_longitude"])
+df = df[df["distance_km"] > 0]
+
+Python reminders:
+- def defines a function; return sends back its result.
+- ** means power (x**2 = x squared).
+- np.sin, np.cos, np.sqrt, np.arcsin are mathematical functions.
+
+4) OUTLIERS – IQR METHOD
+Q1 = 25th percentile; Q3 = 75th percentile
+IQR = Q3 - Q1
+Lower limit = Q1 - 1.5 × IQR
+Upper limit = Q3 + 1.5 × IQR
+Values outside these limits are potential outliers.
+
+Code:
+for col in ["fare_amount", "distance_km"]:
+    q1 = df[col].quantile(0.25)
+    q3 = df[col].quantile(0.75)
+    iqr = q3 - q1
+    df = df[df[col].between(q1 - 1.5*iqr, q3 + 1.5*iqr)]
+
+Remember:
+- quantile(0.25) gives Q1; quantile(0.75) gives Q3.
+- between(low, high) keeps values inside the limits.
+- IQR is robust to extreme values and is commonly used for outlier detection.
+
+5) CORRELATION
+corr = df[["fare_amount", "distance_km", "passenger_count",
+           "hour", "day_of_week", "month"]].corr()
+print(corr.round(2))
+
+Correlation coefficient range: -1 to +1
++1 = perfect positive linear relationship
+ 0 = no linear relationship
+-1 = perfect negative linear relationship
+
+Positive correlation: both variables tend to increase together.
+Negative correlation: one tends to decrease when the other increases.
+Correlation does not prove causation.
+
+6) FEATURES, TARGET AND TRAIN/TEST SPLIT
+X = df[["passenger_count", "hour", "day_of_week", "month",
+        "pickup_longitude", "pickup_latitude",
+        "dropoff_longitude", "dropoff_latitude", "distance_km"]]
+y = df["fare_amount"]
+
+X = input/features; y = target/output to predict.
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42)
+
+test_size=0.20 means 20% testing and 80% training.
+random_state=42 makes the split reproducible.
+Training data teaches the model; test data checks performance on unseen rows.
+
+7) TRAIN BOTH MODELS
+Linear Regression:
+lr = LinearRegression()
+lr.fit(X_train, y_train)          # train/learn
+lr_pred = lr.predict(X_test)      # predict test fares
+
+Random Forest Regression:
+rf = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+rf.fit(X_train, y_train)
+rf_pred = rf.predict(X_test)
+
+Key syntax:
+- ModelName() creates a model object.
+- fit(X_train, y_train) trains it.
+- predict(X_test) generates predictions.
+- n_estimators=100 means 100 decision trees in the forest.
+- Random Forest combines predictions from many decision trees.
+- Linear Regression learns a linear relationship; Random Forest can learn non-linear patterns.
+
+8) EVALUATION FORMULAS
+R² (coefficient of determination):
+R² = 1 - [sum((actual - predicted)²) / sum((actual - mean(actual))²)]
+Closer to 1 is generally better. It can be negative if the model is worse than predicting the mean.
+
+MAE (Mean Absolute Error):
+MAE = (1/n) × sum(|actual - predicted|)
+Average absolute prediction error. Lower is better.
+
+MSE (Mean Squared Error):
+MSE = (1/n) × sum((actual - predicted)²)
+
+RMSE (Root Mean Squared Error):
+RMSE = √MSE
+Lower is better; large errors are penalized more because errors are squared.
+
+Code:
+for name, pred in [("Linear Regression", lr_pred),
+                   ("Random Forest", rf_pred)]:
+    print(name)
+    print("R2:", round(r2_score(y_test, pred), 3))
+    print("MAE:", round(mean_absolute_error(y_test, pred), 3))
+    print("RMSE:", round(np.sqrt(mean_squared_error(y_test, pred)), 3))
+
+Comparison:
+- Prefer higher R².
+- Prefer lower MAE and RMSE.
+- Do not assume Random Forest always wins; report the actual scores.
+
+9) OPTIONAL PLOTS
+plt.scatter(df["distance_km"], df["fare_amount"])
+plt.xlabel("Distance (km)")
+plt.ylabel("Fare amount")
+plt.title("Distance vs Fare")
+plt.show()
+
+A scatter plot helps inspect the relationship between trip distance and fare.
+A correlation heatmap can visualize correlation values, but the printed correlation matrix is sufficient if a graph is not required.
+
+VIVA QUICK ANSWERS
+Q: Why is this regression?
+A: Because fare is a continuous numerical value.
+
+Q: What is preprocessing?
+A: Cleaning and transforming raw data before model training.
+
+Q: Why remove missing and duplicate values?
+A: To avoid incomplete or repeated records affecting analysis and training.
+
+Q: Why calculate distance?
+A: Pickup/drop-off coordinates alone are less interpretable; distance is a useful fare-prediction feature.
+
+Q: What is an outlier?
+A: A value unusually far from most observations.
+
+Q: Why split data?
+A: To train on one part and evaluate on unseen data.
+
+Q: Difference between Linear Regression and Random Forest?
+A: Linear Regression models a linear relationship. Random Forest combines multiple decision trees and can model non-linear relationships.
+
+Q: What is overfitting?
+A: When a model learns training data too closely and performs poorly on new data.
+
+Q: What is the target column?
+A: fare_amount.
+
+Q: What are X and y?
+A: X contains input features; y contains the output/target.
+
+PRACTICAL CHECKLIST
+- Confirm the CSV path and file name.
+- Check df.head(), df.shape() [use df.shape without brackets], and df.isnull().sum().
+- Ensure required columns exist before using them.
+- Run notebook cells from top to bottom.
+- If a variable is not defined, run the earlier cell that creates it.
+- Use the real Kaggle dataset for meaningful results; a tiny demo dataset is not suitable for reliable model evaluation.
+- The original Kaggle dataset may be large. If the notebook is slow, use a random sample for practice, and mention that results are based on the sample.
+"""
+output_path = "/mnt/data/ML_Practical_1_Uber_Quick_Revision.txt"
+pypandoc.convert_text(content, "plain", format="md", outputfile=output_path, extra_args=["--standalone"])
+print(output_path)
